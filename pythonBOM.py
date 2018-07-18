@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import pandas as pd
+from pandas import merge, DataFrame
 
 # Read the ebom
 ebom = pd.read_csv('../BOM_Array_v3.3.csv', skiprows=11)
@@ -17,10 +18,8 @@ ebom['Count_Actual'] = level_list_actual
 # Add Conc column to df
 ebom['Conc'] = [int(str(i) + str(j)) for i, j in zip(ebom['Count_Actual'].tolist(), ebom['level'])]
 
-
-
 # Function to find parents
-def find_parents(level_list, item_list):
+def list_parents(level_list, item_list):
     # List to hold lists of parent items for each item
     parents = []
     for index, level in enumerate(level_list):
@@ -53,5 +52,16 @@ def find_parents(level_list, item_list):
     return parents
 
 # Add the parents list to the df as a new Series
-ebom['Parents'] = find_parents(ebom['level'].tolist(), ebom['item_number'].tolist())
+ebom['Parents'] = list_parents(ebom['level'].tolist(), ebom['item_number'].tolist())
+# Reverse each list in the ebom['Parents'] Series so that the Chassis kpn is the first element in the list
+ebom['Parents'] = ebom['Parents'].apply(lambda x: x[::-1])
+
+# Read network mapping
+network = pd.read_csv('../network.csv')
+
+# Drop duplicates in the item-Number column of the network d
+network = network.drop_duplicates(subset='item_number', keep='first')
+
+# Bring in the "Netwok Text Final" data from the network df to the ebom df. Kind of like an excel vlookup but using pandas merge 
+ebom = pd.merge(ebom, network[['item_number', 'Network Text Final']], on='item_number', how='left')
 
