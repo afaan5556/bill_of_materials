@@ -1,6 +1,5 @@
 import pandas as pd
 
-
 # Function to find parents
 def list_parents(level_list, item_list):
     # List to hold lists of parent items for each item
@@ -34,29 +33,42 @@ def list_parents(level_list, item_list):
         parents.append(parents_temp)
     return parents
 
+def find_floor(level_list, item_list):
+    # List to hold index of floor items for each item
+    floors = []
+    for index, level in enumerate(level_list):
+        loop_level = level
+        loop_index = index
+        # Number of times the level will need to be reset before hitting 1
+        if level == 0:
+            floors.append('N/A')
+        elif level == 1:
+            floors.append(item_list[index])
+        else:
+            while loop_level > 1:
+                loop_index -= 1
+                loop_level = level_list[loop_index]
+            floors.append(item_list[loop_index])
+        
+    return floors
+
+
+
 def main(ebom_csv_path, ebom_csv_skiprows, network_csv_path, network_csv_skiprows):
-    # Read the ebom
-    ebom = pd.read_csv(ebom_csv_path, skiprows=ebom_csv_skiprows)
-    
-    # Calc Count Previous and Count Actual columns as lists
-    level_list = ebom['level'].tolist()
-    level_list_previous = [level_list[0:index].count(i-1) for index, i in enumerate(level_list)]
-    level_list_actual = [level_list[0:index].count(i) + 1 for index, i in enumerate(level_list)]
-    
-    # Add Count Previous and Count Actual to df
-    ebom['Count_Previous'] = level_list_previous
-    ebom['Count_Actual'] = level_list_actual
-    
-    # Add Concatenate column to df
-    ebom['Conc'] = [int(str(i) + str(j)) for i, j in zip(ebom['Count_Actual'].tolist(), ebom['level'])]
-    
-    # Add the parents list to the df as a new Series
+
+    # Read the ebom - engine='python' is needed after a google search re: unicode
+    ebom = pd.read_csv(ebom_csv_path, skiprows=ebom_csv_skiprows, engine='python')
+        
+    # Add the parents list to the df as a new Series by calling the list_parents function
     ebom['Parents'] = list_parents(ebom['level'].tolist(), ebom['item_number'].tolist())
     # Reverse each list in the ebom['Parents'] Series so that the Chassis kpn is the first element in the list
     ebom['Parents'] = ebom['Parents'].apply(lambda x: x[::-1])
     
-    # Read network mapping
-    network = pd.read_csv(network_csv_path, skiprows=network_csv_skiprows)
+    # Add the floors list to the df as a new Series by calling the find_floor function
+    ebom['floor_item_number'] = find_floor(ebom['level'].tolist(), ebom['item_number'].tolist())
+    
+    # Read network mapping - engine='python' is needed after a google search re: unicode
+    network = pd.read_csv(network_csv_path, skiprows=network_csv_skiprows, engine='python')
     
     # Drop duplicates in the item_number column of the network df
     network = network.drop_duplicates(subset='item_number', keep='first')
@@ -64,7 +76,15 @@ def main(ebom_csv_path, ebom_csv_skiprows, network_csv_path, network_csv_skiprow
     # Bring in the "Netwok Text Final" data from the network df to the ebom df. Kind of like an excel vlookup using pandas merge 
     ebom = pd.merge(ebom, network[['item_number', 'Network Text Final']], on='item_number', how='left')
     
+    # Temporary dataframe of just the 'item_num' and 'item_name' columns
+    temp_item_df = ebom[['item_number', 'item_name']]
+    
+    # Temporary dataframe of just the floor item numbers and drop duplicates
+    temp_floor_df = pd.DataFrame(ebom['floor_item_number']).drop_duplicates()
+    
+    # Merge temp_floor_df with temp_item_df to get the floor to item mapping, and merge the result with ebom
+    ebom = ebom.merge(temp_floor_df.merge(temp_item_df, how = 'left', right_on = 'item_number', left_on = 'floor_item_number').drop('item_number', axis =1), on = 'floor_item_number', suffixes=('', '_parent_floor'))
+    
     return ebom
 
-ebom_df = main('../BOM_Array_v3.3.csv', 11, '../network.csv', 0)
-
+ebom_df = main('../BOM_Array_v3.5.csv', 11, '../network_v3.5.csv', 0)
