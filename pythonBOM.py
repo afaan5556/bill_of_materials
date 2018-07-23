@@ -52,8 +52,6 @@ def find_floor(level_list, item_list):
         
     return floors
 
-
-
 def main(ebom_csv_path, ebom_csv_skiprows, network_csv_path, network_csv_skiprows):
 
     # Read the ebom - engine='python' is needed after a google search re: unicode
@@ -87,4 +85,6 @@ def main(ebom_csv_path, ebom_csv_skiprows, network_csv_path, network_csv_skiprow
     
     return ebom
 
-ebom_df = main('../BOM_Array_v3.5.csv', 11, '../network_v3.5.csv', 0)
+ebom_df = main('../BOM_Array_v3.3.csv', 11, '../network_v3.3.csv', 0)
+
+ebom_df.to_csv('../BOM_pivot_ready')
