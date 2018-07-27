@@ -87,4 +87,4 @@ def main(ebom_csv_path, ebom_csv_skiprows, network_csv_path, network_csv_skiprow
 
 ebom_df = main('../BOM_Array_v3.3.csv', 11, '../network_v3.3.csv', 0)
 
-ebom_df.to_csv('../BOM_pivot_ready')
+ebom_df.to_csv('../BOM_pivot_ready.csv')
